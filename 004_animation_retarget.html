@@ -1,0 +1,87 @@
+<!DOCTYPE html><script type="module">
+import App, {THREE}			from "./fungi.3js/App.js";
+import GltfUtil, {Gltf} 	from "./fungi.3js/lib/GltfUtil.js";
+import XhrQueue				from "./fungi/XhrQueue.js";
+import Animation			from "./fungi/Animation.js";
+
+import PoseAnimator			from "./fungi.armature/PoseAnimator.js";
+import RetargetAnimation	from "./fungi.armature/RetargetAnimation.js";
+import IKRig 				from "./fungi.armature/IKRig.js";
+
+//#####################################################
+App.builder()
+	.init_mod( "../fungi.armature/Armature.js" )
+	.set_camera( 0, 0, 2.5, 0.5, 0.85, 0 )
+	.add( init )
+	.render_loop( on_draw )
+	//.render_on_mouse( on_draw )
+	.build();
+
+let gSession, gPlay = null;
+
+//#####################################################
+
+function on_draw( dt, ss ){
+	if( gPlay ) gPlay( dt );
+}
+
+async function init(){
+	let dl = await XhrQueue.url( "./_res/" )
+		.grp( "src", "walking.gltf",	"json", "walking.bin", "bin" )
+		.grp( "veg", "vegeta.gltf",		"json", "vegeta.bin", "bin" )
+		.then();
+
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Load Data
+	let src 	= init_source( dl.src.json, dl.src.bin );
+	let tgt 	= init_target( dl.veg.json, dl.veg.bin );
+	let anim	= new Animation( Gltf.get_animation( dl.src.json, dl.src.bin ), true );
+
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Setup Retargeting and Run
+	gSession = new RetargetAnimation()
+		.set_rigs( src, tgt, true )
+		.set_animation( anim );
+
+	gPlay = ( dt )=>gSession.play_realtime( dt );	// Realtime Retargeting
+	//gPlay = test_build_animation( tgt.IKRig );	// Build New Animation, Play Only that.
+
+	return true;
+}
+
+//#########################################################
+
+function init_source( json, bin ){
+	let mat		= new THREE.MeshPhongMaterial( { color: 0xff7f7f, shininess:1, flatShading:true } ),
+		e		= GltfUtil.get_debug_view( "src_entity", json, bin, mat ),
+		rig 	= e.add_com( "IKRig" ).init( null, true ); // Need Offsets Applied
+	//e.Obj.set_pos( -0.5, 0, 0 );
+	return e;
+}
+
+function init_target( json, bin ){
+	let mat		= new THREE.MeshPhongMaterial( { color: 0xff7f7f, shininess:1 } ),
+		e		= GltfUtil.get_debug_view( "tgt_entity", json, bin, mat ),
+		tpose	= GltfUtil.get_pose( e, json, "tpose", true ),
+		rig 	= e.add_com( "IKRig" ).init( tpose, false );
+	tpose.apply();
+	e.Obj.set_pos( 1.0, 0, 0 );
+	return e;
+}
+
+function test_build_animation( rig ){
+	let anim		= gSession.build(),		// Retarget animation and save to new object
+		animator	= new PoseAnimator(),
+		f 			= 0;
+
+	return ( dt )=>{
+		animator.tick( dt ).update( anim, rig.pose );	// Run Animation
+
+		//f += dt;
+		//animator.key_frame( Math.round( f ), anim, rig.pose ); // Test Frames Only
+
+		rig.apply_pose();
+	}
+}
+
+</script><page-layout></page-layout>
