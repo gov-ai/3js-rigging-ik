@@ -2,6 +2,8 @@
 
 original: https://www.patreon.com/posts/34996503
 
+Hosting tested with vscode live server
+
 - https://gov-ai.github.io/3js-rigging-ik/001_scene.html
 - https://gov-ai.github.io/3js-rigging-ik/002_gltf.html
 - https://gov-ai.github.io/3js-rigging-ik/003_skin_animation.html
